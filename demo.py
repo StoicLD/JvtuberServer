@@ -48,7 +48,7 @@ def main():
                 use_onnx = False
         except:
             use_onnx = False
-        fa = face_alignment.FaceAlignment(face_alignment.LandmarksType._2D, use_onnx=use_onnx, 
+        fa = face_alignment.FaceAlignment(face_alignment.LandmarksType._2D, use_onnx=use_onnx,
                                           flip_input=False)
         face_detector = fa.face_detector
 
@@ -88,9 +88,13 @@ def main():
         _, frame = cap.read()
         frame = cv2.flip(frame, 2)
         frame_count += 1
+        #需要多发一个points，把68个点发送过去
         if args.connect and frame_count > 60: # send information to unity
             msg = '%.4f %.4f %.4f %.4f %.4f %.4f %.4f %.4f'% \
                   (roll, pitch, yaw, min_ear, mar, mdst, steady_pose[6], steady_pose[7])
+            for i in marks:
+                msg += ' {:.4f}'.format(i[0])
+                msg += ' {:.4f}'.format(i[1])
             s.send(bytes(msg, "utf-8"))
 
         t = time.time()
@@ -116,7 +120,7 @@ def main():
             prev_boxes.append(facebox)
             # Do facial landmark detection and iris detection.
             if args.cpu: # do detection every frame
-                face = dlib.rectangle(left=facebox[0], top=facebox[1], 
+                face = dlib.rectangle(left=facebox[0], top=facebox[1],
                                       right=facebox[2], bottom=facebox[3])
                 marks = shape_to_np(shape_predictor(frame, face))
             else:
@@ -125,7 +129,7 @@ def main():
                     or frame_count % 2 == 0: # do landmark detection on first frame
                                              # or every even frame
                     face_img = frame[facebox[1]: facebox[3], facebox[0]: facebox[2]]
-                    marks = fa.get_landmarks(face_img[:,:,::-1], 
+                    marks = fa.get_landmarks(face_img[:,:,::-1],
                             detected_faces=[(0, 0, facebox[2]-facebox[0], facebox[3]-facebox[1])])
                     marks = marks[-1]
                     marks[:, 0] += facebox[0]
@@ -161,7 +165,7 @@ def main():
             min_ear = min(eye_aspect_ratio(marks[36:42]), eye_aspect_ratio(marks[42:48]))
             mar = mouth_aspect_ration(marks[60:68])
             mdst = mouth_distance(marks[60:68])/(facebox[2]-facebox[0])
-            
+
             if args.debug: # draw landmarks, etc.
 
                 # show iris.
@@ -179,11 +183,11 @@ def main():
 
                     # draw stable pose annotation on frame.
                     pose_estimator.draw_annotation_box(
-                        frame, np.expand_dims(steady_pose[:3],0), np.expand_dims(steady_pose[3:6],0), 
+                        frame, np.expand_dims(steady_pose[:3],0), np.expand_dims(steady_pose[3:6],0),
                         color=(128, 255, 128))
 
                     # draw head axes on frame.
-                    pose_estimator.draw_axes(frame, np.expand_dims(steady_pose[:3],0), 
+                    pose_estimator.draw_axes(frame, np.expand_dims(steady_pose[:3],0),
                                              np.expand_dims(steady_pose[3:6],0))
 
         dt = time.time()-t
@@ -207,21 +211,21 @@ def main():
 
 if __name__ == '__main__':
     parser = ArgumentParser()
-    parser.add_argument("--cam", type=int, 
+    parser.add_argument("--cam", type=int,
                         help="specify the camera number if you have multiple cameras",
                         default=0)
-    parser.add_argument("--cpu", action="store_true", 
+    parser.add_argument("--cpu", action="store_true",
                         help="use cpu to do face detection and facial landmark detection",
                         default=False)
-    parser.add_argument("--debug", action="store_true", 
+    parser.add_argument("--debug", action="store_true",
                         help="show camera image to debug (need to uncomment to show results)",
                         default=False)
-    parser.add_argument("--connect", action="store_true", 
+    parser.add_argument("--connect", action="store_true",
                         help="connect to unity character",
                         default=False)
-                        
-    parser.add_argument("--onnx", action="store_true", 
+
+    parser.add_argument("--onnx", action="store_true",
                         help="use onnx to accelerate",
-                        default=False)                
+                        default=False)
     args = parser.parse_args()
     main()
